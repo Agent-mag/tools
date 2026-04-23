@@ -1,8 +1,6 @@
 <div align="center">
 
-<a href="https://theagentmag.com"><img src="https://theagentmag.com/brand/agentmag-banner-github.png" alt="Agent Mag" width="540" /></a>
-
-<br /><br />
+<a href="https://theagentmag.com"><img src="https://raw.githubusercontent.com/Agent-mag/.github/main/profile/agentmag-banner-github.png" alt="Agent Mag" width="100%" /></a>
 
 # Agent Sounds
 
