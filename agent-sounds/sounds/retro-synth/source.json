@@ -1,0 +1,6 @@
+{
+  "ready": ["pad-01.wav", "pad-02.wav", "pad-03.wav"],
+  "work": ["arp-01.wav", "arp-02.wav", "arp-03.wav"],
+  "done": ["resolve-01.wav", "resolve-02.wav"],
+  "ask": ["question-01.wav", "question-02.wav"]
+}

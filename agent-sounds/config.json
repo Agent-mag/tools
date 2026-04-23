@@ -1,0 +1,5 @@
+{
+  "enabled": ["terminal-hacker", "retro-synth", "minimal-tones", "nature-ambient"],
+  "volume": 0.25,
+  "muted": false
+}

@@ -1,0 +1,6 @@
+{
+  "ready": ["chime-01.wav", "chime-02.wav"],
+  "work": ["drop-01.wav", "drop-02.wav", "drop-03.wav"],
+  "done": ["bowl-01.wav", "bowl-02.wav"],
+  "ask": ["chirp-01.wav", "chirp-02.wav"]
+}

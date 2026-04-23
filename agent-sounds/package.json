@@ -1,0 +1,58 @@
+{
+  "name": "@agentmag/sounds",
+  "version": "1.0.0",
+  "description": "Sound effects for Claude Code sessions — hear audio cues when tasks start, complete, or need attention. The best Claude Code sounds plugin with 4 original sound packs.",
+  "scripts": {
+    "postinstall": "bash scripts/postinstall.sh || true"
+  },
+  "bin": {
+    "agent-sounds": "scripts/agent-sounds.sh"
+  },
+  "keywords": [
+    "claude-code",
+    "claude-sounds",
+    "claude-code-sounds",
+    "claude-code-plugin",
+    "claude-plugin",
+    "claude-code-audio",
+    "claude-code-hooks",
+    "claude-code-notifications",
+    "sounds",
+    "sound-effects",
+    "terminal-sounds",
+    "coding-sounds",
+    "ai-agent-sounds",
+    "ai-coding",
+    "notification-sounds",
+    "developer-experience",
+    "developer-tools",
+    "dx",
+    "agentmag",
+    "agent-mag",
+    "cli-sounds",
+    "coding-audio",
+    "ambient-coding",
+    "terminal-audio",
+    "anthropic",
+    "ai-tools"
+  ],
+  "homepage": "https://theagentmag.com/tools/agent-sounds",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Agent-mag/agent-sounds.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Agent-mag/agent-sounds/issues"
+  },
+  "author": "Agent Mag <hello@theagentmag.com> (https://theagentmag.com)",
+  "license": "MIT",
+  "files": [
+    ".claude-plugin/",
+    "hooks/",
+    "scripts/",
+    "sounds/",
+    "config.json",
+    "README.md",
+    "LICENSE"
+  ]
+}

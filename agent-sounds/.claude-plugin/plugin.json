@@ -1,0 +1,12 @@
+{
+  "name": "sounds",
+  "version": "1.0.0",
+  "description": "Sound effects for Claude Code — hear audio cues when tasks complete, errors occur, or your AI agent needs attention.",
+  "author": {
+    "name": "Agent Mag",
+    "url": "https://theagentmag.com"
+  },
+  "homepage": "https://theagentmag.com/tools/agent-sounds",
+  "repository": "https://github.com/Agent-mag/agent-sounds",
+  "license": "MIT"
+}

@@ -1,0 +1,6 @@
+{
+  "ready": ["boot-01.wav", "boot-02.wav", "boot-03.wav"],
+  "work": ["data-01.wav", "data-02.wav", "data-03.wav"],
+  "done": ["success-01.wav", "success-02.wav"],
+  "ask": ["alert-01.wav", "alert-02.wav"]
+}
