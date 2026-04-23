@@ -30,6 +30,14 @@ This is the home for **free, open-source tools** built by and for the AI agent b
 
 ---
 
+## Available Tools
+
+| Tool | What It Does | Install |
+|------|-------------|---------|
+| **[SEO/GEO Auto-Fix Reviewer](seo-geo-reviewer/)** | AI-powered GitHub Action that reviews PRs for SEO issues and auto-fixes them. Uses GPT-5.4 or Claude. | `uses: Agent-mag/tools/seo-geo-reviewer@main` |
+
+---
+
 ## Tool Categories
 
 We're building and accepting tools across these areas:
