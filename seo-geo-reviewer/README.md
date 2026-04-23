@@ -28,6 +28,16 @@ You merge. That's it. No manual SEO work.
 
 ## Quick Start
 
+### Option A: One command (via npm)
+
+```bash
+npx agentmag add tool seo-geo-reviewer
+```
+
+This scaffolds the workflow file into `.github/workflows/`. Set your `ANTHROPIC_API_KEY` secret and push.
+
+### Option B: Manual setup
+
 ```yaml
 # .github/workflows/seo-review.yml
 name: SEO/GEO Auto-Fix Review
