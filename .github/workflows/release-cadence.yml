@@ -1,0 +1,232 @@
+name: Auto Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: "Merged PRs needed since the latest release"
+        required: false
+        default: "3"
+      release_type:
+        description: "Version bump to use when cutting a release"
+        required: false
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+      force_release:
+        description: "Create a release even if the PR threshold has not been met"
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: "Evaluate the cadence without creating a tag"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: auto-release-cadence-main
+  cancel-in-progress: false
+
+jobs:
+  maybe-release:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      THRESHOLD: ${{ inputs.threshold || '3' }}
+      REQUESTED_RELEASE_TYPE: ${{ inputs.release_type || 'auto' }}
+      FORCE_RELEASE: ${{ inputs.force_release || false }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Evaluate release cadence
+        id: cadence
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+
+          if ! [[ "$THRESHOLD" =~ ^[0-9]+$ ]] || [ "$THRESHOLD" -lt 1 ]; then
+            echo "Threshold must be a positive integer. Received: $THRESHOLD" >&2
+            exit 1
+          fi
+
+          if latest=$(gh release view --json tagName,publishedAt --jq '.tagName + " " + .publishedAt' 2>/dev/null); then
+            LATEST_TAG="${latest%% *}"
+            SINCE="${latest#* }"
+          else
+            LATEST_TAG=""
+            SINCE="1970-01-01T00:00:00Z"
+          fi
+
+          echo "Latest release tag: ${LATEST_TAG:-none}"
+          echo "Counting merged PRs after: $SINCE"
+
+          gh api \
+            --paginate \
+            --slurp \
+            "repos/${GITHUB_REPOSITORY}/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100" \
+            > /tmp/pulls-pages.json
+
+          jq --arg since "$SINCE" '
+            [.[][] |
+              select(.merged_at != null and .merged_at > $since) |
+              {
+                number,
+                title,
+                merged_at,
+                url: .html_url,
+                author: .user.login,
+                labels: [.labels[].name]
+              } |
+              select((.author | test("^(github-actions\\[bot\\]|dependabot\\[bot\\])$")) | not) |
+              select((.labels | index("skip-release")) | not) |
+              select((.labels | index("skip-changelog")) | not)
+            ] | sort_by(.merged_at)
+          ' /tmp/pulls-pages.json > /tmp/release-prs.json
+
+          PR_COUNT=$(jq 'length' /tmp/release-prs.json)
+          echo "Included merged PRs: $PR_COUNT"
+
+          HAS_RELEASE_NOW=$(jq 'map(select(.labels | index("release:now"))) | length > 0' /tmp/release-prs.json)
+          HAS_MAJOR=$(jq 'map(select(.labels | index("release:major"))) | length > 0' /tmp/release-prs.json)
+          HAS_MINOR=$(jq 'map(select(.labels | index("release:minor"))) | length > 0' /tmp/release-prs.json)
+          HAS_PATCH=$(jq 'map(select(.labels | index("release:patch"))) | length > 0' /tmp/release-prs.json)
+
+          if [ "$REQUESTED_RELEASE_TYPE" != "auto" ]; then
+            RELEASE_TYPE="$REQUESTED_RELEASE_TYPE"
+          elif [ "$HAS_MAJOR" = "true" ]; then
+            RELEASE_TYPE="major"
+          elif [ "$HAS_MINOR" = "true" ]; then
+            RELEASE_TYPE="minor"
+          elif [ "$HAS_PATCH" = "true" ]; then
+            RELEASE_TYPE="patch"
+          else
+            RELEASE_TYPE="patch"
+          fi
+
+          SHOULD_RELEASE="false"
+          REASON="threshold-not-met"
+
+          if [ "$FORCE_RELEASE" = "true" ]; then
+            SHOULD_RELEASE="true"
+            REASON="manual-force"
+          elif [ "$HAS_RELEASE_NOW" = "true" ]; then
+            SHOULD_RELEASE="true"
+            REASON="release-now-label"
+          elif [ "$PR_COUNT" -ge "$THRESHOLD" ]; then
+            SHOULD_RELEASE="true"
+            REASON="threshold-met"
+          fi
+
+          if [ "$PR_COUNT" -eq 0 ] && [ "$FORCE_RELEASE" != "true" ]; then
+            SHOULD_RELEASE="false"
+            REASON="no-unreleased-prs"
+          fi
+
+          BASE_TAG="${LATEST_TAG:-v0.0.0}"
+          VERSION="${BASE_TAG#v}"
+          MAJOR="${VERSION%%.*}"
+          REST="${VERSION#*.}"
+          MINOR="${REST%%.*}"
+          PATCH="${REST#*.}"
+          PATCH="${PATCH%%[-+]*}"
+
+          if ! [[ "$MAJOR" =~ ^[0-9]+$ && "$MINOR" =~ ^[0-9]+$ && "$PATCH" =~ ^[0-9]+$ ]]; then
+            echo "Latest tag '$BASE_TAG' is not a simple semver tag." >&2
+            exit 1
+          fi
+
+          case "$RELEASE_TYPE" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+            *)
+              echo "Unsupported release type: $RELEASE_TYPE" >&2
+              exit 1
+              ;;
+          esac
+
+          NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+
+          if git rev-parse -q --verify "refs/tags/$NEXT_TAG" >/dev/null; then
+            echo "Tag $NEXT_TAG already exists." >&2
+            exit 1
+          fi
+
+          {
+            echo "## Auto Release Cadence"
+            echo ""
+            echo "- Latest release: ${LATEST_TAG:-none}"
+            echo "- Included merged PRs: $PR_COUNT"
+            echo "- Threshold: $THRESHOLD"
+            echo "- Release type: $RELEASE_TYPE"
+            echo "- Next tag: $NEXT_TAG"
+            echo "- Decision: $SHOULD_RELEASE ($REASON)"
+            echo ""
+            echo "### Included PRs"
+            jq -r '.[] | "- #\(.number) \(.title) (\(.url))"' /tmp/release-prs.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "should_release=$SHOULD_RELEASE"
+            echo "reason=$REASON"
+            echo "latest_tag=$LATEST_TAG"
+            echo "next_tag=$NEXT_TAG"
+            echo "release_type=$RELEASE_TYPE"
+            echo "pr_count=$PR_COUNT"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Stop when release is not due
+        if: steps.cadence.outputs.should_release != 'true'
+        run: |
+          echo "Release not due: ${{ steps.cadence.outputs.reason }}"
+
+      - name: Create and push release tag
+        if: steps.cadence.outputs.should_release == 'true' && env.DRY_RUN != 'true'
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          TAG="${{ steps.cadence.outputs.next_tag }}"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Dispatch release workflow
+        if: steps.cadence.outputs.should_release == 'true' && env.DRY_RUN != 'true'
+        run: |
+          gh workflow run release.yml --ref main -f tag="${{ steps.cadence.outputs.next_tag }}"
+
+      - name: Dry run result
+        if: steps.cadence.outputs.should_release == 'true' && env.DRY_RUN == 'true'
+        run: |
+          echo "Dry run: would create ${{ steps.cadence.outputs.next_tag }} and dispatch release.yml"

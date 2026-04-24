@@ -1,0 +1,208 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to create release for (e.g. v1.0.0). Must already exist."
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find previous tag
+        id: prev
+        run: |
+          CURRENT="${{ steps.tag.outputs.name }}"
+          PREV=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | grep -v "^${CURRENT}$" | head -1)
+          echo "tag=${PREV:-}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate raw changelog from conventional commits
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          PREV="${{ steps.prev.outputs.tag }}"
+
+          if [ -n "$PREV" ]; then
+            RANGE="${PREV}..${TAG}"
+          else
+            RANGE="${TAG}"
+          fi
+
+          {
+            FEATS=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -E "^feat(\(.*\))?:" || true)
+            if [ -n "$FEATS" ]; then
+              echo "### New Features"
+              echo "$FEATS" | while IFS= read -r line; do
+                scope=$(echo "$line" | sed -n 's/^feat(\([^)]*\)):.*/\1/p')
+                msg=$(echo "$line" | sed 's/^feat\([^:]*\): //')
+                if [ -n "$scope" ]; then
+                  echo "- **${scope}**: ${msg}"
+                else
+                  echo "- ${msg}"
+                fi
+              done
+              echo ""
+            fi
+
+            FIXES=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -E "^fix(\(.*\))?:" || true)
+            if [ -n "$FIXES" ]; then
+              echo "### Bug Fixes"
+              echo "$FIXES" | while IFS= read -r line; do
+                scope=$(echo "$line" | sed -n 's/^fix(\([^)]*\)):.*/\1/p')
+                msg=$(echo "$line" | sed 's/^fix\([^:]*\): //')
+                if [ -n "$scope" ]; then
+                  echo "- **${scope}**: ${msg}"
+                else
+                  echo "- ${msg}"
+                fi
+              done
+              echo ""
+            fi
+
+            DOCS=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -E "^docs(\(.*\))?:" || true)
+            if [ -n "$DOCS" ]; then
+              echo "### Documentation"
+              echo "$DOCS" | while IFS= read -r line; do
+                scope=$(echo "$line" | sed -n 's/^docs(\([^)]*\)):.*/\1/p')
+                msg=$(echo "$line" | sed 's/^docs\([^:]*\): //')
+                if [ -n "$scope" ]; then
+                  echo "- **${scope}**: ${msg}"
+                else
+                  echo "- ${msg}"
+                fi
+              done
+              echo ""
+            fi
+
+            STYLES=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -E "^style(\(.*\))?:" || true)
+            if [ -n "$STYLES" ]; then
+              echo "### Styling"
+              echo "$STYLES" | while IFS= read -r line; do
+                scope=$(echo "$line" | sed -n 's/^style(\([^)]*\)):.*/\1/p')
+                msg=$(echo "$line" | sed 's/^style\([^:]*\): //')
+                if [ -n "$scope" ]; then
+                  echo "- **${scope}**: ${msg}"
+                else
+                  echo "- ${msg}"
+                fi
+              done
+              echo ""
+            fi
+
+            REFACTORS=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -E "^refactor(\(.*\))?:" || true)
+            if [ -n "$REFACTORS" ]; then
+              echo "### Refactoring"
+              echo "$REFACTORS" | while IFS= read -r line; do
+                scope=$(echo "$line" | sed -n 's/^refactor(\([^)]*\)):.*/\1/p')
+                msg=$(echo "$line" | sed 's/^refactor\([^:]*\): //')
+                if [ -n "$scope" ]; then
+                  echo "- **${scope}**: ${msg}"
+                else
+                  echo "- ${msg}"
+                fi
+              done
+              echo ""
+            fi
+
+            INFRA=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -E "^(chore|ci|build|perf)(\(.*\))?:" || true)
+            if [ -n "$INFRA" ]; then
+              echo "### Infrastructure & Maintenance"
+              echo "$INFRA" | while IFS= read -r line; do
+                scope=$(echo "$line" | sed -n 's/^[a-z]*(\([^)]*\)):.*/\1/p')
+                msg=$(echo "$line" | sed 's/^[a-z]*\([^:]*\): //')
+                if [ -n "$scope" ]; then
+                  echo "- **${scope}**: ${msg}"
+                else
+                  echo "- ${msg}"
+                fi
+              done
+              echo ""
+            fi
+
+            OTHER=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -vE "^(feat|fix|docs|style|refactor|chore|ci|build|perf|test)(\(.*\))?:" || true)
+            if [ -n "$OTHER" ]; then
+              echo "### Other Changes"
+              echo "$OTHER" | while IFS= read -r line; do
+                echo "- ${line}"
+              done
+              echo ""
+            fi
+
+            COMMIT_COUNT=$(git rev-list --count --no-merges "$RANGE" 2>/dev/null || echo "0")
+            CONTRIBUTORS=$(git log "$RANGE" --pretty=format:"%an" 2>/dev/null | sort -u | wc -l | tr -d ' ')
+            printf "\n---\n**%s commits** from **%s contributor(s)**\n" "$COMMIT_COUNT" "$CONTRIBUTORS"
+          } > /tmp/raw-changelog.md
+
+          echo "Generated raw changelog:"
+          cat /tmp/raw-changelog.md
+
+      - name: Polish with GPT-4o
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          PREV="${{ steps.prev.outputs.tag }}"
+
+          if [ -n "$PREV" ]; then
+            export VERSION_CONTEXT="This is release ${TAG}, covering changes since ${PREV}."
+          else
+            export VERSION_CONTEXT="This is the initial release ${TAG}, covering the full project history."
+          fi
+
+          python3 .github/scripts/polish-release-notes.py
+
+      - name: Assemble branded release body
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          PREV="${{ steps.prev.outputs.tag }}"
+
+          if [ -z "$PREV" ]; then
+            TITLE="${TAG} — Initial Release"
+          else
+            TITLE="${TAG}"
+          fi
+          echo "RELEASE_TITLE=${TITLE}" >> "$GITHUB_ENV"
+
+          python3 .github/scripts/assemble-release-body.py
+
+          echo "Assembled release body:"
+          cat /tmp/release-body.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+
+          PRERELEASE=""
+          if echo "$TAG" | grep -qE "(alpha|beta|rc|pre)"; then
+            PRERELEASE="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            --title "${RELEASE_TITLE}" \
+            --notes-file /tmp/release-body.md \
+            $PRERELEASE
