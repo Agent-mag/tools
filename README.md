@@ -36,6 +36,7 @@ This is the home for **free, open-source tools** built by and for the AI agent b
 | Tool | What It Does | Install |
 |------|-------------|---------|
 | **[SEO/GEO Auto-Fix Reviewer](seo-geo-reviewer/)** | AI-powered GitHub Action that reviews PRs for SEO issues and auto-fixes them. Uses GPT-5.4 or Claude. | `npx agentmag add tool seo-geo-reviewer` |
+| **[PR Security Auto-Fix](pr-security-auto-fix/)** | AI-powered GitHub Action that reviews pull requests for security issues and commits safe fixes automatically. Uses GPT-5.4 or Claude. | `npx agentmag add tool pr-security-auto-fix` |
 | **[Agent Sounds](agent-sounds/)** | Sound effects for Claude Code sessions — hear audio cues when tasks start, complete, or need attention. 4 original royalty-free sound packs. | `npx agentmag add tool claude-sounds` |
 
 ---
