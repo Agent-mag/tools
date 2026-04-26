@@ -1,0 +1,127 @@
+name: "Agent Mag PR Security Auto-Fix"
+description: >
+  AI-powered PR security review that finds high-confidence vulnerabilities,
+  commits safe auto-fixes, and posts a branded pull request summary.
+author: "Agent Mag"
+branding:
+  icon: "shield"
+  color: "gray-dark"
+
+inputs:
+  github-token:
+    description: "GITHUB_TOKEN with contents:write + pull-requests:write"
+    required: true
+  pr-number:
+    description: "Pull request number"
+    required: true
+  base-sha:
+    description: "PR base SHA"
+    required: true
+  head-sha:
+    description: "PR head SHA"
+    required: true
+  azure-openai-endpoint:
+    description: "Azure OpenAI endpoint"
+    required: false
+  azure-openai-deployment:
+    description: "Azure OpenAI deployment name"
+    required: false
+  azure-openai-api-version:
+    description: "Azure OpenAI API version"
+    required: false
+    default: "2025-04-01-preview"
+  azure-openai-api-key:
+    description: "Azure OpenAI API key"
+    required: false
+  anthropic-api-key:
+    description: "Anthropic API key (fallback, or primary if no Azure)"
+    required: false
+  comment-pr:
+    description: "Post or update a PR comment"
+    required: false
+    default: "true"
+  auto-fix:
+    description: "Commit safe auto-fix patches to the PR branch"
+    required: false
+    default: "true"
+  trusted-only:
+    description: "Skip forked/untrusted PRs before model calls or writes"
+    required: false
+    default: "true"
+  max-patches:
+    description: "Maximum number of patches the action may apply in one run"
+    required: false
+    default: "5"
+  validation-command:
+    description: "Optional command to run after applying patches locally, before committing"
+    required: false
+    default: ""
+  exclude-directories:
+    description: "Comma-separated directories to exclude from scanning"
+    required: false
+    default: ""
+  custom-security-scan-instructions:
+    description: "Path to custom security scan instructions to append to the prompt"
+    required: false
+    default: ""
+  false-positive-filtering-instructions:
+    description: "Path to custom false-positive filtering instructions to append to the prompt"
+    required: false
+    default: ""
+
+outputs:
+  findings-count:
+    description: "Total remaining findings after auto-fix"
+    value: ${{ steps.review.outputs.findings_count }}
+  summary:
+    description: "Summary string (high/medium/low)"
+    value: ${{ steps.review.outputs.summary }}
+  verdict:
+    description: "APPROVE, COMMENT, or REQUEST_CHANGES"
+    value: ${{ steps.review.outputs.verdict }}
+  results-file:
+    description: "Path to JSON results"
+    value: pr-security-auto-fix-findings.json
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r ${{ github.action_path }}/requirements.txt
+
+    - name: Run PR Security Auto-Fix Review
+      id: review
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        AZURE_OPENAI_ENDPOINT: ${{ inputs.azure-openai-endpoint }}
+        AZURE_OPENAI_DEPLOYMENT: ${{ inputs.azure-openai-deployment }}
+        AZURE_OPENAI_API_VERSION: ${{ inputs.azure-openai-api-version }}
+        AZURE_OPENAI_API_KEY: ${{ inputs.azure-openai-api-key }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        COMMENT_PR: ${{ inputs.comment-pr }}
+        AUTO_FIX: ${{ inputs.auto-fix }}
+        TRUSTED_ONLY: ${{ inputs.trusted-only }}
+        MAX_PATCHES: ${{ inputs.max-patches }}
+        VALIDATION_COMMAND: ${{ inputs.validation-command }}
+        EXCLUDE_DIRECTORIES: ${{ inputs.exclude-directories }}
+        CUSTOM_SECURITY_SCAN_INSTRUCTIONS: ${{ inputs.custom-security-scan-instructions }}
+        FALSE_POSITIVE_FILTERING_INSTRUCTIONS: ${{ inputs.false-positive-filtering-instructions }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        python "${{ github.action_path }}/review.py"
+
+    - name: Upload findings artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr-security-auto-fix-findings
+        path: pr-security-auto-fix-findings.json
+        if-no-files-found: ignore
