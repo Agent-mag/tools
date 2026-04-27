@@ -1,8 +1,9 @@
 .dotmatrix-icon [data-dot-bg] {
-  opacity: 0.16;
+  opacity: 0.08;
 }
 
 .dotmatrix-icon [data-dot] {
+  opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
   animation-duration: var(--dotmatrix-duration, 1200ms);
@@ -21,17 +22,18 @@
 .dotmatrix-icon[data-motion="breathe"] [data-dot] { animation-name: dotmatrix-breathe; }
 .dotmatrix-icon[data-motion="hold"] [data-dot] { animation-name: dotmatrix-hold; }
 
-@keyframes dotmatrix-orbit { 0%, 100% { opacity: .18; transform: scale(.7); } 45% { opacity: 1; transform: scale(1.08); } }
-@keyframes dotmatrix-scan { 0%, 100% { opacity: .16; transform: scale(.74); } 50% { opacity: 1; transform: scale(1); } }
-@keyframes dotmatrix-wave { 0%, 100% { opacity: .22; transform: translateY(0) scale(.78); } 50% { opacity: 1; transform: translateY(-1.5px) scale(1.06); } }
-@keyframes dotmatrix-ripple { 0%, 100% { opacity: .18; transform: scale(.66); } 55% { opacity: 1; transform: scale(1.12); } }
-@keyframes dotmatrix-spark { 0%, 100% { opacity: .16; transform: scale(.72); } 35% { opacity: 1; transform: scale(1.16); } 60% { opacity: .32; transform: scale(.84); } }
-@keyframes dotmatrix-march { 0%, 100% { opacity: .18; transform: translateX(0) scale(.78); } 50% { opacity: 1; transform: translateX(1.5px) scale(1.04); } }
-@keyframes dotmatrix-breathe { 0%, 100% { opacity: .32; transform: scale(.86); } 50% { opacity: 1; transform: scale(1.04); } }
-@keyframes dotmatrix-hold { 0%, 100% { opacity: .82; transform: scale(1); } 50% { opacity: 1; transform: scale(1.02); } }
+@keyframes dotmatrix-orbit { 0% { opacity: 0; transform: scale(.72); } 8% { opacity: 1; transform: scale(1.08); } 36% { opacity: .06; transform: scale(.82); } 100% { opacity: 0; transform: scale(.72); } }
+@keyframes dotmatrix-scan { 0% { opacity: 0; transform: scale(.74); } 6% { opacity: 1; transform: scale(1); } 30% { opacity: .08; transform: scale(.82); } 100% { opacity: 0; transform: scale(.74); } }
+@keyframes dotmatrix-wave { 0% { opacity: .05; transform: translateY(0) scale(.78); } 20% { opacity: 1; transform: translateY(-1.5px) scale(1.06); } 55% { opacity: .18; transform: translateY(0) scale(.86); } 100% { opacity: .05; transform: translateY(0) scale(.78); } }
+@keyframes dotmatrix-ripple { 0% { opacity: 0; transform: scale(.66); } 8% { opacity: 1; transform: scale(1.12); } 36% { opacity: .05; transform: scale(.82); } 100% { opacity: 0; transform: scale(.66); } }
+@keyframes dotmatrix-spark { 0% { opacity: .05; transform: scale(.72); } 40% { opacity: .05; transform: scale(.72); } 50% { opacity: 1; transform: scale(1.16); } 60% { opacity: .08; transform: scale(.84); } 100% { opacity: .05; transform: scale(.72); } }
+@keyframes dotmatrix-march { 0% { opacity: 0; transform: translateX(0) scale(.78); } 8% { opacity: 1; transform: translateX(1.5px) scale(1.04); } 42% { opacity: .08; transform: translateX(0) scale(.84); } 100% { opacity: 0; transform: translateX(0) scale(.78); } }
+@keyframes dotmatrix-breathe { 0%, 100% { opacity: .12; transform: scale(.86); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes dotmatrix-hold { 0%, 100% { opacity: .18; transform: scale(1); } 50% { opacity: 1; transform: scale(1.02); } }
 
 @media (prefers-reduced-motion: reduce) {
   .dotmatrix-icon [data-dot] {
     animation: none !important;
+    opacity: 0.45;
   }
 }
