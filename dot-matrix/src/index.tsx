@@ -29,7 +29,6 @@ export function DotMatrixIcon({
 }: DotMatrixIconProps) {
   const resolvedPattern = typeof pattern === "string" ? getDotMatrixPattern(pattern) : pattern
   const duration = Math.max(240, Math.round(resolvedPattern.durationMs / Math.max(0.2, speed)))
-  const activeKeys = new Set(resolvedPattern.cells.map((cell) => `${cell.x}-${cell.y}`))
 
   return (
     <svg
@@ -48,18 +47,16 @@ export function DotMatrixIcon({
       } as React.CSSProperties}
       {...props}
     >
-      {gridCells
-        .filter((cell) => !activeKeys.has(`${cell.x}-${cell.y}`))
-        .map((cell) => (
-          <circle
-            key={`base-${cell.x}-${cell.y}`}
-            data-dot-bg=""
-            cx={12 + cell.x * 18}
-            cy={12 + cell.y * 18}
-            r={dotRadius}
-            fill="currentColor"
-          />
-        ))}
+      {gridCells.map((cell) => (
+        <circle
+          key={`base-${cell.x}-${cell.y}`}
+          data-dot-bg=""
+          cx={12 + cell.x * 18}
+          cy={12 + cell.y * 18}
+          r={dotRadius}
+          fill="currentColor"
+        />
+      ))}
       {resolvedPattern.cells.map((cell) => (
         <circle
           key={`${cell.x}-${cell.y}`}
@@ -70,7 +67,7 @@ export function DotMatrixIcon({
           fill="currentColor"
           opacity={cell.opacity}
           style={{
-            "--dotmatrix-delay": `${Math.round(cell.delay * duration * -1)}ms`,
+            "--dotmatrix-delay": `${Math.round(cell.delay * duration)}ms`,
             "--dotmatrix-dot-scale": cell.scale ?? 1,
           } as React.CSSProperties}
         />
